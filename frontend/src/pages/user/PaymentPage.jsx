@@ -6,7 +6,7 @@ const PaymentPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const flight = state?.flight;
-
+  console.log("PaymentPage flight:", state);
   const [passengers, setPassengers] = useState([
     { name: "", age: "", gender: "" },
   ]);
@@ -36,6 +36,7 @@ const PaymentPage = () => {
         flight_id: flight.flight_id || flight.id || flight.flightId,
         passengers,
       };
+      console.log("Booking payload:", payload);
       const bookingRes = await axiosInstance.post(`/bookings`, payload);
       const booking = bookingRes.data.booking || bookingRes.data;
       const bookingId = booking.booking_id || booking.insertId || booking.id || booking.bookingId;
@@ -98,7 +99,7 @@ const PaymentPage = () => {
         {error && <div className="text-red-600">{error}</div>}
 
         <div>
-          <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded">
+          <button disabled={loading} onClick={handleSubmit} className="bg-blue-600 text-white px-4 py-2 rounded">
             {loading ? "Processing..." : "Pay & Book"}
           </button>
         </div>
