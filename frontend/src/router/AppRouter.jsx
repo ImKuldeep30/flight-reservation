@@ -16,6 +16,7 @@ import ManageAircrafts from "../pages/admin/ManageAircrafts";
 import ManageAirports from "../pages/admin/ManageAirports";
 import AddFlight from "../pages/admin/AddFlight";
 import Analytics from "../pages/admin/Analytics";
+import Payment from "../pages/user/Payment";
 
 const AppRouter = () => (
     <AuthProvider>
@@ -40,7 +41,7 @@ const AppRouter = () => (
                     path="/payment"
                     element={
                         <ProtectedRoute>
-                            <PaymentPage />
+                            <Payment />
                         </ProtectedRoute>
                     }
                 />

@@ -16,7 +16,26 @@ const FlightDetails = () => {
       setLoading(true);
       try {
         const res = await axiosInstance.get(`/flights/${id}`);
-        setFlight(res.data.flight || res.data);
+        const flightData = res.data.flight || res.data;
+
+        // 🕒 Calculate duration (in hours and minutes)
+        if (flightData.departure_time && flightData.arrival_time) {
+          const depTime = new Date(flightData.departure_time);
+          const arrTime = new Date(flightData.arrival_time);
+          const diffMs = arrTime - depTime;
+
+          if (diffMs > 0) {
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            flightData.duration = `${diffHours}h ${diffMinutes}m`;
+          } else {
+            flightData.duration = "Invalid time range";
+          }
+        } else {
+          flightData.duration = "N/A";
+        }
+
+        setFlight(flightData);
       } catch (err) {
         console.error(err);
         setError(err.response?.data?.message || "Failed to load flight details");
@@ -58,9 +77,6 @@ const FlightDetails = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             ✈️ Flight {flight.flight_number || flight.flight_id}
           </h1>
-          {/* <span className="text-blue-600 text-xl font-semibold">
-            ₹{flight.price ? Number(flight.price).toFixed(2) : "N/A"}
-          </span> */}
         </div>
 
         {/* Divider */}
@@ -79,7 +95,8 @@ const FlightDetails = () => {
 
           <div>
             <p>
-              <strong>Base Fare:</strong> ₹{flight.base_fare ? Number(flight.base_fare).toFixed(2) : "N/A"}
+              <strong>Base Fare:</strong> ₹
+              {flight.base_fare ? Number(flight.base_fare).toFixed(2) : "N/A"}
             </p>
             <p>
               <strong>Total Seats:</strong> {flight.total_seats || "N/A"}
@@ -95,7 +112,9 @@ const FlightDetails = () => {
               <p className="text-sm text-gray-600">
                 {flight.departure_airport || flight.from || "N/A"}
               </p>
-              <p className="font-medium">{formatDate(flight.departure_time || flight.departure)}</p>
+              <p className="font-medium">
+                {formatDate(flight.departure_time || flight.departure)}
+              </p>
             </div>
 
             <div className="hidden sm:flex items-center justify-center">
@@ -109,7 +128,9 @@ const FlightDetails = () => {
               <p className="text-sm text-gray-600">
                 {flight.arrival_airport || flight.to || "N/A"}
               </p>
-              <p className="font-medium">{formatDate(flight.arrival_time || flight.arrival)}</p>
+              <p className="font-medium">
+                {formatDate(flight.arrival_time || flight.arrival)}
+              </p>
             </div>
           </div>
         </div>

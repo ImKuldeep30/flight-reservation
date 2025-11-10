@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../api/axiosInstance"; // ✅ correct path
+import axiosInstance from "../../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 
 const AvailableFlights = () => {
@@ -8,24 +8,45 @@ const AvailableFlights = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")) || null);
-  // react-router navigate hook
   const navigate = useNavigate();
 
   // 🔍 Filter states
   const [search, setSearch] = useState("");
   const [minFare, setMinFare] = useState("");
   const [maxFare, setMaxFare] = useState("");
+  const [source, setSource] = useState("");
+  const [destination, setDestination] = useState("");
+  const [date, setDate] = useState("");
 
+  // Dropdown data
+  const [sourceOptions, setSourceOptions] = useState([]);
+  const [destinationOptions, setDestinationOptions] = useState([]);
+
+  // ✈️ Fetch all flights
   const fetchFlights = async () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/flights/upcoming");
       if (res.data.status && Array.isArray(res.data.flights)) {
-        setFlights(res.data.flights);
-        setFilteredFlights(res.data.flights);
+        const fetchedFlights = res.data.flights;
+        setFlights(fetchedFlights);
+        setFilteredFlights(fetchedFlights);
+
+        // Extract unique source and destination codes for dropdowns
+        const uniqueSources = [
+          ...new Set(fetchedFlights.map((f) => f.departure_code)),
+        ].filter(Boolean);
+        const uniqueDestinations = [
+          ...new Set(fetchedFlights.map((f) => f.arrival_code)),
+        ].filter(Boolean);
+
+        setSourceOptions(uniqueSources);
+        setDestinationOptions(uniqueDestinations);
       } else {
         setFlights([]);
         setFilteredFlights([]);
+        setSourceOptions([]);
+        setDestinationOptions([]);
       }
     } catch (err) {
       console.error("Error fetching flights:", err);
@@ -39,7 +60,7 @@ const AvailableFlights = () => {
     fetchFlights();
   }, []);
 
-  // 🔍 Filter flights when search or fare changes
+  // 🧠 Filter Logic
   const handleFilter = () => {
     let filtered = flights;
 
@@ -49,22 +70,37 @@ const AvailableFlights = () => {
       );
     }
 
-    if (minFare) {
+    if (source.trim() !== "") {
       filtered = filtered.filter(
-        (f) => Number(f.base_fare) >= Number(minFare)
+        (f) => f.departure_code?.toLowerCase() === source.toLowerCase()
       );
     }
 
-    if (maxFare) {
+    if (destination.trim() !== "") {
       filtered = filtered.filter(
-        (f) => Number(f.base_fare) <= Number(maxFare)
+        (f) => f.arrival_code?.toLowerCase() === destination.toLowerCase()
       );
+    }
+
+    if (date.trim() !== "") {
+      const selectedDate = new Date(date).toLocaleDateString("en-GB");
+      filtered = filtered.filter((f) => {
+        const flightDate = new Date(f.departure_time).toLocaleDateString("en-GB");
+        return flightDate === selectedDate;
+      });
+    }
+
+    if (minFare) {
+      filtered = filtered.filter((f) => Number(f.base_fare) >= Number(minFare));
+    }
+
+    if (maxFare) {
+      filtered = filtered.filter((f) => Number(f.base_fare) <= Number(maxFare));
     }
 
     setFilteredFlights(filtered);
   };
 
-  // ✈️ Date formatter
   const formatDate = (dateStr) =>
     new Date(dateStr).toLocaleString("en-GB", {
       day: "numeric",
@@ -87,7 +123,7 @@ const AvailableFlights = () => {
     <div className="p-8 min-h-screen bg-gray-50">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">✈️ Available Flights</h1>
-        {user.role === "admin" && (
+        {user?.role === "admin" && (
           <button
             onClick={() => navigate("/admin/dashboard")}
             className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
@@ -97,15 +133,44 @@ const AvailableFlights = () => {
         )}
       </div>
 
-      {/* 🔍 Search & Filter Bar */}
+      {/* 🔍 Filter Bar */}
       <div className="flex flex-wrap gap-3 mb-8 bg-white shadow-md p-4 rounded-xl">
+
+        {/* 🏙️ Source Dropdown */}
+        <select
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          className="border border-gray-300 p-2 rounded-md w-36"
+        >
+          <option value="">Source</option>
+          {sourceOptions.map((src) => (
+            <option key={src} value={src}>
+              {src}
+            </option>
+          ))}
+        </select>
+
+        {/* 🏙️ Destination Dropdown */}
+        <select
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
+          className="border border-gray-300 p-2 rounded-md w-36"
+        >
+          <option value="">Destination</option>
+          {destinationOptions.map((dst) => (
+            <option key={dst} value={dst}>
+              {dst}
+            </option>
+          ))}
+        </select>
+
         <input
-          type="text"
-          placeholder="🔎 Search by flight number or airline"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-300 p-2 rounded-md flex-1 min-w-[200px]"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="border border-gray-300 p-2 rounded-md w-40"
         />
+
         <input
           type="number"
           placeholder="Min Fare ₹"
@@ -120,6 +185,7 @@ const AvailableFlights = () => {
           onChange={(e) => setMaxFare(e.target.value)}
           className="border border-gray-300 p-2 rounded-md w-32"
         />
+
         <button
           onClick={handleFilter}
           className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700"
@@ -140,11 +206,8 @@ const AvailableFlights = () => {
                 Flight {f.flight_number}
               </h2>
               <p className="text-gray-700">
-                <strong>Aircraft ID:</strong> {f.aircraft_id}
-              </p>
-              <p className="text-gray-700">
-                <strong>From:</strong> {f.departure_airport_id} →{" "}
-                <strong>To:</strong> {f.arrival_airport_id}
+                <strong>From:</strong> {f.departure_code} →{" "}
+                <strong>To:</strong> {f.arrival_code}
               </p>
               <p className="text-gray-700">
                 <strong>Departure:</strong> {formatDate(f.departure_time)}
@@ -156,9 +219,9 @@ const AvailableFlights = () => {
                 ₹{Number(f.base_fare).toFixed(2)}
               </p>
 
-              {/* 🟢 Book Button */}
+              {/* 🟢 Book Button - navigate to FlightDetails (passes flight in state) */}
               <button
-                onClick={() => alert(`Booking flight ${f.flight_number}...`)}
+                onClick={() => navigate(`/flights/${f.flight_id}`, { state: { flight: f } })}
                 className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 w-full"
               >
                 Book Flight
